@@ -20,7 +20,7 @@ services:
       - APP_ENV=${APP_ENV:-production}
       - APP_DEBUG=${APP_DEBUG:-false}
       - APP_KEY=${APP_KEY}
-      - APP_URL=${APP_URL}
+      - APP_URL=https://${SNIPEIT_PRIVATE_DOMAIN:-inventory.local}
       - APP_FORCE_TLS=${APP_FORCE_TLS:-false}
       - MYSQL_PORT_3306_TCP_ADDR=snipeit_db
       - MYSQL_PORT_3306_TCP_PORT=3306
@@ -49,7 +49,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.snipeit.rule=Host(`${SNIPEIT_DOMAIN:-inventory.local}`)"
+      - "traefik.http.routers.snipeit.rule=Host(`${SNIPEIT_PRIVATE_DOMAIN:-inventory.local}`)"
       - "traefik.http.routers.snipeit.entrypoints=web,websecure"
       - "traefik.http.routers.snipeit.tls=true"
       - "traefik.http.routers.snipeit.tls.certresolver=letsencrypt"
@@ -136,7 +136,7 @@ services:
       - PAPERLESS_DBPASS=${PAPERLESS_DB_PASSWORD}
       - PAPERLESS_DBPORT=5432
       - PAPERLESS_SECRET_KEY=${PAPERLESS_SECRET_KEY}
-      - PAPERLESS_URL=${PAPERLESS_URL:-https://paperless.yourdomain.com}
+      - PAPERLESS_URL=https://${PAPERLESS_PRIVATE_DOMAIN:-paperless.local}
       - PAPERLESS_ADMIN_USER=${PAPERLESS_ADMIN_USER:-admin}
       - PAPERLESS_ADMIN_PASSWORD=${PAPERLESS_ADMIN_PASSWORD}
       - PAPERLESS_ADMIN_MAIL=${PAPERLESS_ADMIN_MAIL:-admin@yourdomain.com}
@@ -168,7 +168,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.paperless.rule=Host(`${PAPERLESS_DOMAIN:-paperless.local}`)"
+      - "traefik.http.routers.paperless.rule=Host(`${PAPERLESS_PRIVATE_DOMAIN:-paperless.local}`)"
       - "traefik.http.routers.paperless.entrypoints=web,websecure"
       - "traefik.http.routers.paperless.tls=true"
       - "traefik.http.routers.paperless.tls.certresolver=letsencrypt"
