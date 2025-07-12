@@ -295,16 +295,16 @@ networks:
 volumes:
   # SnipeIT application data
   snipeit_data_volume:
-    name: "${CONTAINER_NAME_PREFIX:-snipeit}_data"
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_snipeit_data"
     driver: local
     driver_opts:
       type: ${DATA_VOLUME_TYPE:-none}
       o: ${DATA_VOLUME_OPTIONS:-bind}
-      device: ${DATA_BASE:-./data}/snipeit/config
+      device: ${DATA_BASE:-./data}/snipeit
 
   # Database volumes
   snipeit_db_volume:
-    name: "${CONTAINER_NAME_PREFIX:-snipeit}_db"
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_snipeit_db"
     driver: local
     driver_opts:
       type: ${DB_VOLUME_TYPE:-none}
@@ -312,7 +312,7 @@ volumes:
       device: ${DB_BASE:-./data}/snipeit/mysql
 
   snipeit_redis_volume:
-    name: "${CONTAINER_NAME_PREFIX:-snipeit}_redis"
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_snipeit_redis"
     driver: local
     driver_opts:
       type: ${REDIS_VOLUME_TYPE:-none}
@@ -321,7 +321,7 @@ volumes:
 
   # Backup volume
   snipeit_backup_volume:
-    name: "${CONTAINER_NAME_PREFIX:-snipeit}_backup"
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_snipeit_backup"
     driver: local
     driver_opts:
       type: ${BACKUP_VOLUME_TYPE:-none}
