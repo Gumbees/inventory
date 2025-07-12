@@ -11,7 +11,7 @@ version: "3.8"
 
 services:
   snipeit:
-    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_app"
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_snipeit_app"
     image: "snipe/snipe-it:latest"
     environment:
       - PUID=${PUID:-1000}
@@ -57,7 +57,7 @@ services:
       - "traefik.docker.network=inventory_apps"
 
   snipeit_db:
-    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_db"
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_snipeit_db"
     image: "mysql:8.0"
     environment:
       - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
@@ -78,7 +78,7 @@ services:
         max-size: 10m
 
   snipeit_redis:
-    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_redis"
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_snipeit_redis"
     image: "redis:7-alpine"
     volumes:
       - "snipeit_redis_volume:/data"
@@ -91,31 +91,6 @@ services:
       options:
         max-file: '3'
         max-size: 5m
-
-  # Optional: Database backup service
-  snipeit_backup:
-    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_backup"
-    image: "mysql:8.0"
-    environment:
-      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${DB_DATABASE}
-      - TZ=${TZ:-UTC}
-    volumes:
-      - "snipeit_backup_volume:/backup"
-      - "./scripts:/scripts:ro"
-    networks:
-      - inventory_db_network
-    depends_on:
-      - snipeit_db
-    restart: "no"
-    profiles:
-      - backup
-    entrypoint: |
-      sh -c '
-      echo "Database backup service ready"
-      echo "Run: docker-compose --profile backup run snipeit_backup /scripts/backup.sh"
-      sleep infinity
-      '
 
   # ================================================
   # PAPERLESS-NGX SERVICES
@@ -237,32 +212,6 @@ services:
         max-file: '3'
         max-size: 5m
 
-  # Optional: Paperless backup service
-  paperless_backup:
-    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_backup"
-    image: "postgres:15"
-    environment:
-      - POSTGRES_DB=${PAPERLESS_DB_NAME:-paperless}
-      - POSTGRES_USER=${PAPERLESS_DB_USER:-paperless}
-      - POSTGRES_PASSWORD=${PAPERLESS_DB_PASSWORD}
-      - TZ=${TZ:-UTC}
-    volumes:
-      - "paperless_backup_volume:/backup"
-      - "./scripts:/scripts:ro"
-    networks:
-      - paperless_db_network
-    depends_on:
-      - paperless_db
-    restart: "no"
-    profiles:
-      - backup
-    entrypoint: |
-      sh -c '
-      echo "Paperless backup service ready"
-      echo "Run: docker-compose --profile backup run paperless_backup /scripts/backup.sh"
-      sleep infinity
-      '
-
 networks:
   # Internal isolated network for inter-service communication (no internet access)
   inventory_apps:
@@ -319,15 +268,6 @@ volumes:
       o: ${REDIS_VOLUME_OPTIONS:-bind}
       device: ${REDIS_BASE:-./data}/snipeit/redis
 
-  # Backup volume
-  snipeit_backup_volume:
-    name: "${CONTAINER_NAME_PREFIX:-snipeit}_snipeit_backup"
-    driver: local
-    driver_opts:
-      type: ${BACKUP_VOLUME_TYPE:-none}
-      o: ${BACKUP_VOLUME_OPTIONS:-bind}
-      device: ${BACKUP_BASE:-./backups}/snipeit/backups
-
   # Paperless-NGX volumes
   paperless_data_volume:
     name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_data"
@@ -375,12 +315,4 @@ volumes:
     driver_opts:
       type: ${PAPERLESS_REDIS_VOLUME_TYPE:-none}
       o: ${PAPERLESS_REDIS_VOLUME_OPTIONS:-bind}
-      device: ${PAPERLESS_REDIS_BASE:-./data}/paperless/redis
-
-  paperless_backup_volume:
-    name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_backup"
-    driver: local
-    driver_opts:
-      type: ${PAPERLESS_BACKUP_VOLUME_TYPE:-none}
-      o: ${PAPERLESS_BACKUP_VOLUME_OPTIONS:-bind}
-      device: ${PAPERLESS_BACKUP_BASE:-./backups}/paperless/backups 
+      device: ${PAPERLESS_REDIS_BASE:-./data}/paperless/redis 
