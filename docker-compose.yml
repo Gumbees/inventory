@@ -300,7 +300,7 @@ volumes:
     driver_opts:
       type: ${DATA_VOLUME_TYPE:-none}
       o: ${DATA_VOLUME_OPTIONS:-bind}
-      device: ${DATA_BASE:-./data}/snipeit
+      device: ${DATA_BASE:-./data}/snipeit/config
 
   # Database volumes
   snipeit_db_volume:
@@ -309,7 +309,7 @@ volumes:
     driver_opts:
       type: ${DB_VOLUME_TYPE:-none}
       o: ${DB_VOLUME_OPTIONS:-bind}
-      device: ${DB_BASE:-./data}/mysql
+      device: ${DB_BASE:-./data}/snipeit/mysql
 
   snipeit_redis_volume:
     name: "${CONTAINER_NAME_PREFIX:-snipeit}_redis"
@@ -317,7 +317,7 @@ volumes:
     driver_opts:
       type: ${REDIS_VOLUME_TYPE:-none}
       o: ${REDIS_VOLUME_OPTIONS:-bind}
-      device: ${REDIS_BASE:-./data}/redis
+      device: ${REDIS_BASE:-./data}/snipeit/redis
 
   # Backup volume
   snipeit_backup_volume:
@@ -326,7 +326,7 @@ volumes:
     driver_opts:
       type: ${BACKUP_VOLUME_TYPE:-none}
       o: ${BACKUP_VOLUME_OPTIONS:-bind}
-      device: ${BACKUP_BASE:-./backups}
+      device: ${BACKUP_BASE:-./backups}/snipeit/backups
 
   # Paperless-NGX volumes
   paperless_data_volume:
@@ -335,7 +335,7 @@ volumes:
     driver_opts:
       type: ${PAPERLESS_DATA_VOLUME_TYPE:-none}
       o: ${PAPERLESS_DATA_VOLUME_OPTIONS:-bind}
-      device: ${PAPERLESS_DATA_BASE:-./data}/paperless
+      device: ${PAPERLESS_DATA_BASE:-./data}/paperless/config
 
   paperless_media_volume:
     name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_media"
@@ -383,4 +383,4 @@ volumes:
     driver_opts:
       type: ${PAPERLESS_BACKUP_VOLUME_TYPE:-none}
       o: ${PAPERLESS_BACKUP_VOLUME_OPTIONS:-bind}
-      device: ${PAPERLESS_BACKUP_BASE:-./backups}/paperless 
+      device: ${PAPERLESS_BACKUP_BASE:-./backups}/paperless/backups 
