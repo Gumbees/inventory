@@ -1,0 +1,157 @@
+# SnipeIT Inventory Management Environment Configuration
+# Copy this file to .env and configure the values for your setup
+
+# ================================================
+# CONTAINER CONFIGURATION
+# ================================================
+CONTAINER_NAME_PREFIX=snipeit
+PUID=1000
+PGID=1000
+TZ=UTC
+
+# ================================================
+# SNIPEIT APPLICATION CONFIGURATION
+# ================================================
+# Generate a 32-character random string for APP_KEY
+# You can use: openssl rand -base64 32
+APP_KEY=base64:CHANGE_ME_TO_32_CHARACTER_RANDOM_STRING
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://inventory.yourdomain.com
+APP_FORCE_TLS=false
+SNIPEIT_DOMAIN=inventory.yourdomain.com
+
+# ================================================
+# DATABASE CONFIGURATION
+# ================================================
+DB_DATABASE=snipeit
+DB_USERNAME=snipeit
+DB_PASSWORD=secure_password_here
+DB_ROOT_PASSWORD=secure_root_password_here
+
+# ================================================
+# PAPERLESS-NGX CONFIGURATION
+# ================================================
+# Generate a secret key for Paperless-NGX
+# You can use: openssl rand -base64 32
+PAPERLESS_SECRET_KEY=CHANGE_ME_TO_32_CHARACTER_RANDOM_STRING
+PAPERLESS_DOMAIN=paperless.yourdomain.com
+PAPERLESS_URL=https://paperless.yourdomain.com
+
+# Paperless Database Configuration
+PAPERLESS_DB_NAME=paperless
+PAPERLESS_DB_USER=paperless
+PAPERLESS_DB_PASSWORD=secure_paperless_password_here
+
+# Paperless Admin User
+PAPERLESS_ADMIN_USER=admin
+PAPERLESS_ADMIN_PASSWORD=secure_admin_password_here
+PAPERLESS_ADMIN_MAIL=admin@yourdomain.com
+
+# Paperless OCR and Processing
+PAPERLESS_OCR_LANGUAGE=eng
+PAPERLESS_TIKA_ENABLED=1
+PAPERLESS_TIKA_GOTENBERG_ENDPOINT=http://paperless_gotenberg:3000
+PAPERLESS_TIKA_ENDPOINT=http://paperless_tika:9998
+PAPERLESS_CONSUMER_POLLING=0
+PAPERLESS_CONSUMER_RECURSIVE=true
+PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS=true
+PAPERLESS_ENABLE_HTTP_REMOTE_USER=false
+PAPERLESS_TASK_WORKERS=2
+PAPERLESS_THREADS_PER_WORKER=1
+
+# ================================================
+# MAIL CONFIGURATION (Optional)
+# ================================================
+MAIL_DRIVER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDR=your-email@gmail.com
+MAIL_FROM_NAME=SnipeIT Inventory
+
+# ================================================
+# NETWORK CONFIGURATION
+# ================================================
+INVENTORY_NETWORK=inventory_apps
+PAPERLESS_NETWORK=paperless_apps
+
+# ================================================
+# VOLUME CONFIGURATION
+# ================================================
+# Base directories for data storage
+DATA_BASE=./data
+DB_BASE=./data
+REDIS_BASE=./data
+BACKUP_BASE=./backups
+
+# Paperless volume base directories
+PAPERLESS_DATA_BASE=./data
+PAPERLESS_MEDIA_BASE=./data
+PAPERLESS_EXPORT_BASE=./data
+PAPERLESS_CONSUME_BASE=./data
+PAPERLESS_DB_BASE=./data
+PAPERLESS_REDIS_BASE=./data
+PAPERLESS_BACKUP_BASE=./backups
+
+# Volume types and options (default: local bind mounts)
+DATA_VOLUME_TYPE=none
+DATA_VOLUME_OPTIONS=bind
+DB_VOLUME_TYPE=none
+DB_VOLUME_OPTIONS=bind
+REDIS_VOLUME_TYPE=none
+REDIS_VOLUME_OPTIONS=bind
+BACKUP_VOLUME_TYPE=none
+BACKUP_VOLUME_OPTIONS=bind
+
+# Paperless volume types and options
+PAPERLESS_DATA_VOLUME_TYPE=none
+PAPERLESS_DATA_VOLUME_OPTIONS=bind
+PAPERLESS_MEDIA_VOLUME_TYPE=none
+PAPERLESS_MEDIA_VOLUME_OPTIONS=bind
+PAPERLESS_EXPORT_VOLUME_TYPE=none
+PAPERLESS_EXPORT_VOLUME_OPTIONS=bind
+PAPERLESS_CONSUME_VOLUME_TYPE=nfs
+PAPERLESS_CONSUME_VOLUME_OPTIONS=addr=192.168.1.100,rw,soft,intr,vers=4
+PAPERLESS_DB_VOLUME_TYPE=none
+PAPERLESS_DB_VOLUME_OPTIONS=bind
+PAPERLESS_REDIS_VOLUME_TYPE=none
+PAPERLESS_REDIS_VOLUME_OPTIONS=bind
+PAPERLESS_BACKUP_VOLUME_TYPE=none
+PAPERLESS_BACKUP_VOLUME_OPTIONS=bind
+
+# ================================================
+# NFS CONFIGURATION (for Paperless Consume Volume)
+# ================================================
+# NFS server IP address
+NFS_SERVER_IP=192.168.1.100
+# Full NFS path for paperless consume directory
+# Format: server_ip:/path/to/consume/directory
+PAPERLESS_CONSUME_NFS_PATH=192.168.1.100:/mnt/storage/paperless/consume
+
+# ================================================
+# ADVANCED CONFIGURATION (Optional)
+# ================================================
+# Uncomment and configure if needed
+
+# SESSION_DRIVER=database
+# CACHE_DRIVER=redis
+# QUEUE_DRIVER=redis
+
+# AWS S3 Configuration (if using S3 for file storage)
+# AWS_ACCESS_KEY_ID=
+# AWS_SECRET_ACCESS_KEY=
+# AWS_DEFAULT_REGION=
+# AWS_BUCKET=
+# AWS_URL=
+
+# LDAP Configuration (if using LDAP authentication)
+# LDAP_ENABLED=false
+# LDAP_SERVER=
+# LDAP_PORT=389
+# LDAP_USERNAME=
+# LDAP_PASSWORD=
+# LDAP_BASE_DN=
+# LDAP_FILTER= 

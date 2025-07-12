@@ -1,0 +1,386 @@
+# Docker Compose configuration for SnipeIT Inventory Management
+# Environment variables are loaded from .env file by default
+# See README.md for detailed documentation
+#
+# ARM64 COMPATIBILITY:
+# - Uses official snipe/snipe-it image with multi-architecture support
+# - Compatible with Apple Silicon, ARM servers, and AMD64 systems
+# - MySQL and Redis images also support multi-architecture
+
+version: "3.8"
+
+services:
+  snipeit:
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_app"
+    image: "snipe/snipe-it:latest"
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - APP_KEY=${APP_KEY}
+      - APP_URL=${APP_URL}
+      - APP_FORCE_TLS=${APP_FORCE_TLS:-false}
+      - MYSQL_PORT_3306_TCP_ADDR=snipeit_db
+      - MYSQL_PORT_3306_TCP_PORT=3306
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=snipeit_redis
+      - REDIS_PORT=6379
+      - MAIL_DRIVER=${MAIL_DRIVER:-smtp}
+      - MAIL_HOST=${MAIL_HOST:-}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_ENCRYPTION=${MAIL_ENCRYPTION:-tls}
+      - MAIL_FROM_ADDR=${MAIL_FROM_ADDR:-}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME:-SnipeIT}
+    volumes:
+      - "snipeit_data_volume:/var/lib/snipeit"
+    networks:
+      - inventory_apps
+      - inventory_db_network
+      - containers_internet
+    depends_on:
+      - snipeit_db
+      - snipeit_redis
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.snipeit.rule=Host(`${SNIPEIT_DOMAIN:-inventory.local}`)"
+      - "traefik.http.routers.snipeit.entrypoints=web,websecure"
+      - "traefik.http.routers.snipeit.tls=true"
+      - "traefik.http.routers.snipeit.tls.certresolver=letsencrypt"
+      - "traefik.http.services.snipeit.loadbalancer.server.port=80"
+      - "traefik.docker.network=inventory_apps"
+
+  snipeit_db:
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_db"
+    image: "mysql:8.0"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - "snipeit_db_volume:/var/lib/mysql"
+    networks:
+      - inventory_db_network
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    logging:
+      driver: json-file
+      options:
+        max-file: '5'
+        max-size: 10m
+
+  snipeit_redis:
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_redis"
+    image: "redis:7-alpine"
+    volumes:
+      - "snipeit_redis_volume:/data"
+    networks:
+      - inventory_db_network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    logging:
+      driver: json-file
+      options:
+        max-file: '3'
+        max-size: 5m
+
+  # Optional: Database backup service
+  snipeit_backup:
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_backup"
+    image: "mysql:8.0"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - "snipeit_backup_volume:/backup"
+      - "./scripts:/scripts:ro"
+    networks:
+      - inventory_db_network
+    depends_on:
+      - snipeit_db
+    restart: "no"
+    profiles:
+      - backup
+    entrypoint: |
+      sh -c '
+      echo "Database backup service ready"
+      echo "Run: docker-compose --profile backup run snipeit_backup /scripts/backup.sh"
+      sleep infinity
+      '
+
+  # ================================================
+  # PAPERLESS-NGX SERVICES
+  # ================================================
+  
+  paperless_webserver:
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless"
+    image: "ghcr.io/paperless-ngx/paperless-ngx:latest"
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+      - PAPERLESS_REDIS=redis://paperless_redis:6379
+      - PAPERLESS_DBENGINE=postgresql
+      - PAPERLESS_DBHOST=paperless_db
+      - PAPERLESS_DBNAME=${PAPERLESS_DB_NAME:-paperless}
+      - PAPERLESS_DBUSER=${PAPERLESS_DB_USER:-paperless}
+      - PAPERLESS_DBPASS=${PAPERLESS_DB_PASSWORD}
+      - PAPERLESS_DBPORT=5432
+      - PAPERLESS_SECRET_KEY=${PAPERLESS_SECRET_KEY}
+      - PAPERLESS_URL=${PAPERLESS_URL:-https://paperless.yourdomain.com}
+      - PAPERLESS_ADMIN_USER=${PAPERLESS_ADMIN_USER:-admin}
+      - PAPERLESS_ADMIN_PASSWORD=${PAPERLESS_ADMIN_PASSWORD}
+      - PAPERLESS_ADMIN_MAIL=${PAPERLESS_ADMIN_MAIL:-admin@yourdomain.com}
+      - PAPERLESS_OCR_LANGUAGE=${PAPERLESS_OCR_LANGUAGE:-eng}
+      - PAPERLESS_TIME_ZONE=${TZ:-UTC}
+      - PAPERLESS_TIKA_ENABLED=${PAPERLESS_TIKA_ENABLED:-1}
+      - PAPERLESS_TIKA_GOTENBERG_ENDPOINT=${PAPERLESS_TIKA_GOTENBERG_ENDPOINT:-http://paperless_gotenberg:3000}
+      - PAPERLESS_TIKA_ENDPOINT=${PAPERLESS_TIKA_ENDPOINT:-http://paperless_tika:9998}
+      - PAPERLESS_CONSUMER_POLLING=${PAPERLESS_CONSUMER_POLLING:-0}
+      - PAPERLESS_CONSUMER_RECURSIVE=${PAPERLESS_CONSUMER_RECURSIVE:-true}
+      - PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS=${PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS:-true}
+      - PAPERLESS_ENABLE_HTTP_REMOTE_USER=${PAPERLESS_ENABLE_HTTP_REMOTE_USER:-false}
+      - PAPERLESS_TASK_WORKERS=${PAPERLESS_TASK_WORKERS:-2}
+      - PAPERLESS_THREADS_PER_WORKER=${PAPERLESS_THREADS_PER_WORKER:-1}
+    volumes:
+      - "paperless_data_volume:/usr/src/paperless/data"
+      - "paperless_media_volume:/usr/src/paperless/media"
+      - "paperless_export_volume:/usr/src/paperless/export"
+      - "paperless_consume_volume:/usr/src/paperless/consume"
+    networks:
+      - paperless_apps
+      - paperless_db_network
+      - containers_internet
+    depends_on:
+      - paperless_db
+      - paperless_redis
+      - paperless_gotenberg
+      - paperless_tika
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.paperless.rule=Host(`${PAPERLESS_DOMAIN:-paperless.local}`)"
+      - "traefik.http.routers.paperless.entrypoints=web,websecure"
+      - "traefik.http.routers.paperless.tls=true"
+      - "traefik.http.routers.paperless.tls.certresolver=letsencrypt"
+      - "traefik.http.services.paperless.loadbalancer.server.port=8000"
+      - "traefik.docker.network=paperless_apps"
+
+  paperless_db:
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_db"
+    image: "postgres:15"
+    environment:
+      - POSTGRES_DB=${PAPERLESS_DB_NAME:-paperless}
+      - POSTGRES_USER=${PAPERLESS_DB_USER:-paperless}
+      - POSTGRES_PASSWORD=${PAPERLESS_DB_PASSWORD}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - "paperless_db_volume:/var/lib/postgresql/data"
+    networks:
+      - paperless_db_network
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-file: '5'
+        max-size: 10m
+
+  paperless_redis:
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_redis"
+    image: "redis:7-alpine"
+    volumes:
+      - "paperless_redis_volume:/data"
+    networks:
+      - paperless_db_network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    logging:
+      driver: json-file
+      options:
+        max-file: '3'
+        max-size: 5m
+
+  paperless_gotenberg:
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_gotenberg"
+    image: "gotenberg/gotenberg:7"
+    command:
+      - "gotenberg"
+      - "--chromium-disable-javascript=true"
+      - "--chromium-allow-list=file:///tmp/.*"
+    networks:
+      - paperless_db_network
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-file: '3'
+        max-size: 5m
+
+  paperless_tika:
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_tika"
+    image: "ghcr.io/paperless-ngx/tika:latest"
+    networks:
+      - paperless_db_network
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-file: '3'
+        max-size: 5m
+
+  # Optional: Paperless backup service
+  paperless_backup:
+    container_name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_backup"
+    image: "postgres:15"
+    environment:
+      - POSTGRES_DB=${PAPERLESS_DB_NAME:-paperless}
+      - POSTGRES_USER=${PAPERLESS_DB_USER:-paperless}
+      - POSTGRES_PASSWORD=${PAPERLESS_DB_PASSWORD}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - "paperless_backup_volume:/backup"
+      - "./scripts:/scripts:ro"
+    networks:
+      - paperless_db_network
+    depends_on:
+      - paperless_db
+    restart: "no"
+    profiles:
+      - backup
+    entrypoint: |
+      sh -c '
+      echo "Paperless backup service ready"
+      echo "Run: docker-compose --profile backup run paperless_backup /scripts/backup.sh"
+      sleep infinity
+      '
+
+networks:
+  # Internal isolated network for inter-service communication (no internet access)
+  inventory_apps:
+    name: "${INVENTORY_NETWORK:-inventory_apps}"
+    internal: true
+    driver: bridge
+
+  # External network for internet access (app only)
+  containers_internet:
+    external: true
+    name: "containers_internet"
+
+  # Isolated database network (no internet access)
+  inventory_db_network:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_db_network"
+    internal: true
+    driver: bridge
+
+  # Paperless networks
+  paperless_apps:
+    name: "${PAPERLESS_NETWORK:-paperless_apps}"
+    internal: true
+    driver: bridge
+
+  paperless_db_network:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_db_network"
+    internal: true
+    driver: bridge
+
+volumes:
+  # SnipeIT application data
+  snipeit_data_volume:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_data"
+    driver: local
+    driver_opts:
+      type: ${DATA_VOLUME_TYPE:-none}
+      o: ${DATA_VOLUME_OPTIONS:-bind}
+      device: ${DATA_BASE:-./data}/snipeit
+
+  # Database volumes
+  snipeit_db_volume:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_db"
+    driver: local
+    driver_opts:
+      type: ${DB_VOLUME_TYPE:-none}
+      o: ${DB_VOLUME_OPTIONS:-bind}
+      device: ${DB_BASE:-./data}/mysql
+
+  snipeit_redis_volume:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_redis"
+    driver: local
+    driver_opts:
+      type: ${REDIS_VOLUME_TYPE:-none}
+      o: ${REDIS_VOLUME_OPTIONS:-bind}
+      device: ${REDIS_BASE:-./data}/redis
+
+  # Backup volume
+  snipeit_backup_volume:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_backup"
+    driver: local
+    driver_opts:
+      type: ${BACKUP_VOLUME_TYPE:-none}
+      o: ${BACKUP_VOLUME_OPTIONS:-bind}
+      device: ${BACKUP_BASE:-./backups}
+
+  # Paperless-NGX volumes
+  paperless_data_volume:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_data"
+    driver: local
+    driver_opts:
+      type: ${PAPERLESS_DATA_VOLUME_TYPE:-none}
+      o: ${PAPERLESS_DATA_VOLUME_OPTIONS:-bind}
+      device: ${PAPERLESS_DATA_BASE:-./data}/paperless
+
+  paperless_media_volume:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_media"
+    driver: local
+    driver_opts:
+      type: ${PAPERLESS_MEDIA_VOLUME_TYPE:-none}
+      o: ${PAPERLESS_MEDIA_VOLUME_OPTIONS:-bind}
+      device: ${PAPERLESS_MEDIA_BASE:-./data}/paperless/media
+
+  paperless_export_volume:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_export"
+    driver: local
+    driver_opts:
+      type: ${PAPERLESS_EXPORT_VOLUME_TYPE:-none}
+      o: ${PAPERLESS_EXPORT_VOLUME_OPTIONS:-bind}
+      device: ${PAPERLESS_EXPORT_BASE:-./data}/paperless/export
+
+  paperless_consume_volume:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_consume"
+    driver: local
+    driver_opts:
+      type: ${PAPERLESS_CONSUME_VOLUME_TYPE:-nfs}
+      o: ${PAPERLESS_CONSUME_VOLUME_OPTIONS:-addr=${NFS_SERVER_IP},rw,soft,intr,vers=4}
+      device: ${PAPERLESS_CONSUME_NFS_PATH}
+
+  paperless_db_volume:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_db"
+    driver: local
+    driver_opts:
+      type: ${PAPERLESS_DB_VOLUME_TYPE:-none}
+      o: ${PAPERLESS_DB_VOLUME_OPTIONS:-bind}
+      device: ${PAPERLESS_DB_BASE:-./data}/paperless/postgresql
+
+  paperless_redis_volume:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_redis"
+    driver: local
+    driver_opts:
+      type: ${PAPERLESS_REDIS_VOLUME_TYPE:-none}
+      o: ${PAPERLESS_REDIS_VOLUME_OPTIONS:-bind}
+      device: ${PAPERLESS_REDIS_BASE:-./data}/paperless/redis
+
+  paperless_backup_volume:
+    name: "${CONTAINER_NAME_PREFIX:-snipeit}_paperless_backup"
+    driver: local
+    driver_opts:
+      type: ${PAPERLESS_BACKUP_VOLUME_TYPE:-none}
+      o: ${PAPERLESS_BACKUP_VOLUME_OPTIONS:-bind}
+      device: ${PAPERLESS_BACKUP_BASE:-./backups}/paperless 
