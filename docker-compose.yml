@@ -61,7 +61,7 @@ services:
       - MYSQL_DATABASE=${DB_DATABASE}
       - MYSQL_USER=${DB_USERNAME}
       - MYSQL_PASSWORD=${DB_PASSWORD}
-      - TZ=${TZ:-UTC}
+      - TZ=${TZ:-America/New_York}
     volumes:
       - "snipeit-db-volume:/var/lib/mysql"
     networks:
@@ -128,7 +128,7 @@ services:
       - "paperless-consume-volume:/usr/src/paperless/consume"
     networks:
       inventory:
-        ipv4_address: 10.0.11.226/24
+
       traefik-public:
     depends_on:
       - paperless-db
@@ -242,11 +242,10 @@ networks:
     external: true
     name: "traefik-public"
 
-  # Single overlay network for the stack
+  # Internal network for the stack
   inventory:
     name: "${INVENTORY_NETWORK:-inventory}"
-    driver: overlay
-    attachable: true
+    driver: bridge
 
 volumes:
   # SnipeIT application data
